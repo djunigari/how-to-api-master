@@ -13,4 +13,5 @@ module.exports = app => {
     app.route('/client')
         .all(app.config.passport.authenticate())
         .post(app.api.client.save)
+        .get(app.api.client.get)
 }

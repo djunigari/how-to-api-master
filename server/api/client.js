@@ -1,32 +1,44 @@
 const { v4: uuidv4 } = require('uuid');
 
 module.exports = app => {
-    const ClientApi = app.mongoose.model('ClientApi', {
-        _id: String,
-        apiKey: String,
-        email: String,
-        client: String
-    })
+    const { existsOrError } = app.api.validation
 
-    const get = (req, res) => {
-        Client.findOne({},{}, { sort: {'createdAt': -1}})
-            .then(client => res.json(client)) 
+    const limit = 3
+
+    const get = async (req, res) => {
+        const page = req.query.page || 1
+        
+        const result = await app.db('clientApi').count('id').first()
+        const count = parseInt(result.count)
+
+        app.db('clientApi')
+            .select('id','email','clientHostName', 'apiKey')
+            .limit(limit)
+            .offset(page * limit - limit)
+            .then(clients => res.json({data: clients, count, limit}))
+            .catch(err => res.status(500).send(err))
     }
 
+
     const save = (req, res) => {
-        const clientApi = new ClientApi({
-            _id: Date.now(),
-            apiKey: uuidv4(),
-            email: req.body.email,
-            client: req.body.client
-        })
-    
-        clientApi.save().then(c => {
-            res.status(201).send({data: c})
-        })
+        const clientApi = {...req.body}
+
+        try{
+            existsOrError(clientApi.email, 'E-mail não informado')
+            existsOrError(clientApi.clientHostName, 'Client Hostname não informado')
+        }catch(msg){
+            return res.status(400).send(msg)
+        }
+
+        clientApi.apiKey = uuidv4()
+        
+        app.db('clientApi')
+                .insert(clientApi)
+                .then(_ => res.status(204).send())
+                .catch(err => res.status(500).send(err))
             
         
     }
 
-    return { ClientApi, get, save }
+    return { get, save }
 }

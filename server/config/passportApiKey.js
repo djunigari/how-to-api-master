@@ -7,11 +7,14 @@ module.exports = app => {
         { header: 'Authorization', prefix: 'x-api-key ' },
         true,
         function(apiKey, done, req) {
-            const ClientApi = app.mongoose.model('ClientApi')
-            ClientApi.findOne({ apiKey: apiKey},{}).then( c => {
-                if (!c) { return done(null, false); }
-                return done(null, c);
-            })
+            app.db('clientApi')
+                .where({apiKey})
+                .first()
+                .then( c => {
+                    if (!c) { return done(null, false); }
+                    return done(null, c);
+                })
+                .catch(err => res.status(500).send(err))
         }
     )
     passport.use(strategy)
